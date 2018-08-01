@@ -1,0 +1,10 @@
+body {
+  margin: 0;
+}
+
+.video {
+  background: black;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
