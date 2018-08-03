@@ -33,8 +33,53 @@ const blobs = await Promise.all(
 // convert blobs to HTMLImage elements
 const images = await Promise.all(blobs.map(
   blob => faceapi.bufferToImage(blob)
-))
+));
 
+// For each image we locate the subjects face and compute the face descriptor
+const refDescriptions = await Promise.all(images.map(
+  async img => (await faceapi.allFaces(img))[0]
+));
+
+const labels = ['sheldon', 'raj', 'leonard', 'howard'];
+
+const refDescriptors = refDescriptions.map((fd, i) => ({
+  descriptor: fd.descriptor,
+  label: labels[i]
+}));
+
+const sortAsc = (a, b) => a - b;
+
+const results = fullFaceDescriptions.map((fd) => {
+  const bestMatch = refDescriptors.map(
+    ({ descriptor, label }) => ({
+      label,
+      distance: faceapi.euclideanDistance(fd.descriptor, descriptor)
+    })
+  ).sort(sortAsc)[0]
+
+  return {
+    detection: fd.detection,
+    label: bestMatch.label,
+    distance: bestMatch.distance
+  }
+});
+
+// 0.6 is a good distance threshold value to judge whether the descriptors match or not
+const maxDistance = 0.6;
+
+// we can draw the bounding boxes together with their labels into a canvas to display the results:
+results.forEach(result => {
+  faceapi.drawDetection(canvas, result.detection, {withScore: false})
+
+  const text = `${result.distance < maxDistance ? result.className : 'unknown'} (${result.distance})`;
+  const {x, y, height: boxHeight} = detection.getBox();
+  faceapi.drawText(
+    canvas.getContext('2d'),
+    x,
+    y + boxHeight,
+    text
+  )
+});
 
 // Gaining access to user's webcam (audio & video)
 // const constraints = {
